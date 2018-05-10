@@ -57,7 +57,10 @@ bool DEBUG = true;     // Change this to true to enable debug (Printing to seria
 #define MS 220        // Max Speed for driving forward
 #define TS 200        // Max Turn Speed
 #define AINC 1      // Incrementing value for Driving (0-255)
-#define TINC .1      // Degree increment for turning
+#define TINC 1      // Degree increment for turning
+
+int UR=30;
+int I=0;
 
 int movespeed = 0;
 int LEFT, RIGHT, yawDiff;
@@ -401,6 +404,7 @@ void GYRO() {
 //============
 
 void controllerMap() {
+
   switch (B) {
     case 2:               // Forward
       if (movespeed < MS) {
@@ -422,22 +426,29 @@ void controllerMap() {
 
     case 4:                // Right
       movespeed = 0;
-      yawDesired += TINC;
       setYaw(yawDesired);
-
+      if(I==0){
+      yawDesired += TINC;
+      I=UR;
+      }
       break;
 
     case 8:                // Left
       movespeed = 0;
       yawDesired -= TINC;
       setYaw(yawDesired);
-
+      if(I==0){
+      yawDesired -= TINC;
+      I=UR;
+      }
+      
       break;
 
     case 0:                // Stop
       movespeed = 0;
       break;
   }
+  I--;
 }
 
 //============
@@ -452,20 +463,7 @@ void motorMapping() {
   yawDiff = abs(yawSetpoint - modifiedCurrentYaw);
 
 
-  if (B == 1) {
-    if (LB == 0 ) {
-      B = 0;
-    }
-    if (LB == 4) {
-      B = 4;
-    }
-    if ( LB == 8) {
-      B = 8;
-    }
-    if (LB != 4 && LB != 8 && movespeed == 0) {
-      B = 0;
-    }
-  }
+
   switch (B) {
 
     case 2:               // Forward
@@ -497,7 +495,6 @@ void motorMapping() {
         LT = 0;
         RT = 0;
       }
-      LB = 4;
       break;
 
     case 8:               //LEFT
@@ -511,7 +508,6 @@ void motorMapping() {
         LT = 0;
         RT = 0;
       }
-      LB = 8;
       break;
 
     case 0:               //STOP
