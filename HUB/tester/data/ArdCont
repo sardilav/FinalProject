@@ -1,0 +1,17 @@
+ArduinoController
+LSTICKY	Left Stick Y	3	SLIDER	Y Axis	0	1.0	0.1
+LSTICKX	Left Stick X	3	SLIDER	X Axis	0	1.0	0.1
+RSTICKY	Right Stick Y	3	SLIDER	Y Rotation	0	1.0	0.1
+RSTICKX	Right Stick X	3	SLIDER	X Rotation	0	1.0	0.1
+TRIGGERS	Triggers	3	SLIDER	Z Axis	0	1.0	0.0
+A	A	1	BUTTON	Button 0	0	0.0	0.0
+B	B	1	BUTTON	Button 1	0	0.0	0.0
+X	X	1	BUTTON	Button 2	0	0.0	0.0
+Y	Y	1	BUTTON	Button 3	0	0.0	0.0
+LB	Left Bumper	1	BUTTON	Button 4	0	0.0	0.0
+RB	Right Bumper	1	BUTTON	Button 5	0	0.0	0.0
+BACK	Back Button	1	BUTTON	Button 6	0	0.0	0.0
+START	Start Nutton	1	BUTTON	Button 7	0	0.0	0.0
+LSTICK	Left Stick Press	1	BUTTON	Button 8	0	0.0	0.0
+RSTICK	Right Stick Press	1	BUTTON	Button 9	0	0.0	0.0
+DPAD	D pad	2	HAT	cooliehat: Hat Switch	0	1.0	0.0
