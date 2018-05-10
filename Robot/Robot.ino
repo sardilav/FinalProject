@@ -56,8 +56,8 @@ bool DEBUG = true;     // Change this to true to enable debug (Printing to seria
 
 #define MS 220        // Max Speed for driving forward
 #define TS 200        // Max Turn Speed
-#define AINC .01      // Incrementing value for Driving (0-255)
-#define TINC .01      // Degree increment for turning
+#define AINC 1      // Incrementing value for Driving (0-255)
+#define TINC .1      // Degree increment for turning
 
 int movespeed = 0;
 int LEFT, RIGHT, yawDiff;
@@ -443,77 +443,86 @@ void controllerMap() {
 //============
 
 void motorMapping() {
-  int LS,RS,LT,RT,LO,RO;
+  int LS, RS, LT, RT, LO, RO;
   int LB;             //last case state
-  int margin=2;
-  
+  int margin = 2;
+
   GYRO();
   steeringPID.Compute();
-  yawDiff=abs(yawSetpoint-modifiedCurrentYaw);
+  yawDiff = abs(yawSetpoint - modifiedCurrentYaw);
 
-  switch (B){
-      case 1;
-        if(LB==0){B=0;}
-        if(LB==4){B=4;}
-        if(LB==8){B=8;}
-        if(LB!=4 && LB!=8 && movespeed==0){B=0;}
+
+  if (B == 1) {
+    if (LB == 0 ) {
+      B = 0;
+    }
+    if (LB == 4) {
+      B = 4;
+    }
+    if ( LB == 8) {
+      B = 8;
+    }
+    if (LB != 4 && LB != 8 && movespeed == 0) {
+      B = 0;
+    }
+  }
+  switch (B) {
+
+    case 2:               // Forward
+      LS = movespeed;
+      RS = movespeed;
+      LT = 0;
+      RT = 0;
+      LO = motorOffsetOutput;
+      RO = -motorOffsetOutput;
       break;
-      
-      case 2:               // Forward
-      LS=movespeed;
-      RS=movespeed;
-      LT=0;
-      RT=0;
-      LO=motorOffsetOutput;
-      RO=-motorOffsetOutput;
-      break;    
 
-      case 6:               // Reverse
-      LS=-movespeed;
-      RS=-movespeed;
-      LT=0;
-      RT=0;
-      LO=-motorOffsetOutput;
-      RO=motorOffsetOutput;
-      break;   
+    case 6:               // Reverse
+      LS = -movespeed;
+      RS = -movespeed;
+      LT = 0;
+      RT = 0;
+      LO = -motorOffsetOutput;
+      RO = motorOffsetOutput;
+      break;
 
-      case 4:               //Right
-      LS=0;
-      RS=0;
-      LT=TS;
-      RT=-TS;
-      LO=motorOffsetOutput;
-      RO=-motorOffsetOutput;
-      if(yawDiff<margin){
-        LT=0;
-        RT=0;
+    case 4:               //Right
+      LS = 0;
+      RS = 0;
+      LT = TS;
+      RT = -TS;
+      LO = motorOffsetOutput;
+      RO = -motorOffsetOutput;
+      if (yawDiff < margin) {
+        LT = 0;
+        RT = 0;
       }
-      LB=4;
+      LB = 4;
       break;
 
-      case 8:               //LEFT
-      LS=0;
-      RS=0;
-      LT=-TS;
-      RT=TS;
-      LO=-motorOffsetOutput;
-      RO=motorOffsetOutput;
-      if(yawDiff<margin){
-        LT=0;
-        RT=0;
+    case 8:               //LEFT
+      LS = 0;
+      RS = 0;
+      LT = -TS;
+      RT = TS;
+      LO = -motorOffsetOutput;
+      RO = motorOffsetOutput;
+      if (yawDiff < margin) {
+        LT = 0;
+        RT = 0;
       }
-      LB=8;
+      LB = 8;
       break;
 
-      case 0:               //STOP
-      LS=0;
-      RS=0;
-      LT=0;
-      RT=0;
-      LO=0;
-      RO=0;
-      LB=0;
-      break; 
+    case 0:               //STOP
+      LS = 0;
+      RS = 0;
+      LT = 0;
+      RT = 0;
+      LO = 0;
+      RO = 0;
+      LB = 0;
+      break;
   }
 
   LEFT = LS + LT + LO;
@@ -667,7 +676,7 @@ void debug() {
   Serial.print(LEFT);
   Serial.print(',');
   Serial.println(RIGHT);
-  
+
 
 
   //  Serial.print(" | Robot: ");
