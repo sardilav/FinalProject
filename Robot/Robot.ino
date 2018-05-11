@@ -68,7 +68,7 @@ int yawDesired = 0;
 
 double yawSetpoint, modifiedCurrentYaw, motorOffsetOutput;
 double currentYaw;
-double Kp = 3, Ki = 0, Kd = 0;
+double Kp = 3, Ki = 0, Kd = 0.5;
 PID steeringPID(&modifiedCurrentYaw, &motorOffsetOutput, &yawSetpoint, Kp, Ki, Kd, DIRECT);
 const int StabilizeSeconds = 15;
 double initialPose = 0.0;
@@ -462,14 +462,16 @@ void motorMapping() {
   yawDiff = abs(yawSetpoint - modifiedCurrentYaw);
 
   if(DES_FRONT==true && LIFT_COMPL==true){
+    int FB=0;
     if(B==2){
-      B=6;
+      FB=6;
     }
     if(B==6){
-      B=2;
+      FB=2;
     }
+    B=FB;
   }
-
+  
   switch (B) {
 
     case 2:               // Forward
