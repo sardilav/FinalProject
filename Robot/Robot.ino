@@ -392,7 +392,7 @@ void GYRO() {
       // reset so we can continue cleanly
       mpu.resetFIFO();
       Serial.println(F("FIFO overflow!"));
-      digitalWrite(GREEN, HIGH);
+
 
       // otherwise, check for DMP data ready interrupt (this should happen frequently)
     } else if (mpuIntStatus & 0x02) {
@@ -414,8 +414,6 @@ void GYRO() {
         setYaw(modifiedCurrentYaw);
         firstTime = false;
       }
-
-      digitalWrite(GREEN, LOW);
 
     }
   }
