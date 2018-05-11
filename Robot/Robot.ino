@@ -50,7 +50,7 @@ int SPC = .95;              // Motor Catch up value if encoder is greater than o
 int SPCI = 1;            // Motor Catch up value if encoder is less than other (>1)
 
 
-bool DEBUG = false;     // Change this to true to enable debug (Printing to serial moniter) Caution slows down program
+bool DEBUG = true;     // Change this to true to enable debug (Printing to serial moniter) Caution slows down program
 
 //============ Gyro and PID
 
@@ -70,7 +70,7 @@ double yawSetpoint, modifiedCurrentYaw, motorOffsetOutput;
 double currentYaw;
 double Kp = 3, Ki = 0, Kd = 0.5;
 PID steeringPID(&modifiedCurrentYaw, &motorOffsetOutput, &yawSetpoint, Kp, Ki, Kd, DIRECT);
-const int StabilizeSeconds = 15;
+const int StabilizeSeconds = 1;
 double initialPose = 0.0;
 
 MPU6050 mpu;
@@ -95,6 +95,8 @@ VectorInt16 aaWorld;    // [x, y, z]            world-frame accel sensor measure
 VectorFloat gravity;    // [x, y, z]            gravity vector
 float euler[3];         // [psi, theta, phi]    Euler angle container
 float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
+//int16_t gx, gy, gz;
+//int16_t ax, ay, az;
 
 const double RAD2DEG = 180.0 / M_PI;
 const double DEG2RAD = M_PI / 180.0;
@@ -160,7 +162,7 @@ bool DES_FRONT=false;
 void setup() {
 
 
-  Serial.begin(9600);
+  Serial.begin(38400);
   Serial2.begin(9600);
 
   Wire.begin();
@@ -274,22 +276,22 @@ void setup() {
 
 
 void loop() {
-  
+  GYRO();
   DataReceive();
   controllerMap();
 
-  if(DES_FRONT==false && DesiredRobot == robotnum){
-  motorMapping();
-  }
-
-  if(DES_FRONT==false && LIFT_COMPL==true){
-    motorMapping();
-  }
-  
-  if(DES_FRONT==true && LIFT_COMPL==true){
-  reverseMotorMapping();
-  }
-
+//  if(DES_FRONT==false && DesiredRobot == robotnum){
+//  motorMapping();
+//  }
+//
+//  if(DES_FRONT==false && LIFT_COMPL==true){
+//    motorMapping();
+//  }
+//  
+//  if(DES_FRONT==true && LIFT_COMPL==true){
+//  reverseMotorMapping();
+//  }
+//
   if (DEBUG == true) {
     debug();
   }
@@ -382,6 +384,20 @@ void GYRO() {
     modifiedCurrentYaw = currentYaw;
   }
 
+//  currentYaw = gx * RAD2DEG;
+//  if (abs(currentYaw - yawSetpoint) > 180.0) {
+//    if (currentYaw >= 0) {
+//      modifiedCurrentYaw = currentYaw - 360.0;
+//    }
+//    else {
+//      modifiedCurrentYaw = currentYaw + 360.0;
+//    }
+//  }
+//  else {
+//    modifiedCurrentYaw = currentYaw;
+//  }
+//
+//  mpu.getRotation(&gx, &gy, &gz);
   if (mpuInterrupt || (fifoCount >= packetSize)) {
 
     // reset interrupt flag and get INT_STATUS byte
@@ -390,6 +406,7 @@ void GYRO() {
 
     // get current FIFO count
     fifoCount = mpu.getFIFOCount();
+   
 
     // check for overflow (this should never happen unless our code is too inefficient)
     if ((mpuIntStatus & 0x10) || fifoCount == 1024) {
@@ -405,6 +422,8 @@ void GYRO() {
 
       // read a packet from FIFO
       mpu.getFIFOBytes(fifoBuffer, packetSize);
+      mpu.resetFIFO();
+      
 
       // track FIFO count here in case there is > 1 packet available
       // (this lets us immediately read more without waiting for an interrupt)
@@ -421,6 +440,12 @@ void GYRO() {
 
     }
   }
+
+//      if (firstTime) {
+//        initialPose = gx * RAD2DEG;
+//        setYaw(modifiedCurrentYaw);
+//        firstTime = false;
+//      }
 }
 
 //============
