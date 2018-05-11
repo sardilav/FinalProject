@@ -10,13 +10,14 @@
 //============ Change these for each robot
 // Robot 1: Good Wiring Robot
 // Robot 2: Bad wiring Robot
+// Robot 3: Best Wiring Robot
 
 #define robotnum 2          // Robot Number (1, 2, 3)
 #define LF 9                // Left Motor Forward
 #define LR 8                // Left Motor Reverse
 #define RF 10               // Right Motor Reverse
 #define RR 11               // Right  Motor Reverse
-#define QTIsense1 46        // Front QTI
+#define QTIsense1 46        // Front QT
 #define QTIsense2 3         // Back QTI
 #define IR_F 44             // Front IR Sensor
 #define IR_B 12             // Back IR Sensor
@@ -36,9 +37,9 @@
 
 //============ Change these based off Measured Values
 
-#define QTI1Match 2500      // Value greater than floor but less than black tape for Robot 1 QTI 
-#define QTI2Match 500       // Value greater than floor but less than black tape for Robot 2 QTI
-#define QTI3Match 566       // Value greater than floor but less than black tape for Robot 2 QTI 
+#define QTI1Match 900      // Value greater than floor but less than black tape for Robot 1 QTI 
+#define QTI2Match 800     // Value greater than floor but less than black tape for Robot 2 QTI
+#define QTI3Match 1000     // Value greater than floor but less than black tape for Robot 2 QTI 
 #define MinDist 5           // Minimum Measurable Distance
 #define LiftDist 320        // Distance Lift Box travels from top to bottom
 #define IR_DELAY 200000
@@ -57,7 +58,7 @@ bool DEBUG = false;     // Change this to true to enable debug (Printing to seri
 
 //============ Gyro and PID
 
-#define MS 220        // Max Speed for driving forward
+#define MS 210        // Max Speed for driving forward
 #define TS 170        // Max Turn Speed
 #define AINC 1      // Incrementing value for Driving (0-255)
 #define TINC 1      // Degree increment for turning
