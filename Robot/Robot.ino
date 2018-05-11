@@ -264,9 +264,9 @@ void setup() {
 
   motorOff();
 
-  ledTest();
-
-  GYRO();
+  ledTest();        // Blink the LEDs to show Robot ready
+  GYRO();           // Call the Gyro for first time to initialize it and set initial position
+  Hub(1,robotnum);  // Tell Hub that Robot is ready to start
 
 }
 
@@ -277,6 +277,7 @@ void loop() {
   DataReceive();
   controllerMap();
   motorMapping();
+  
 
   if (DEBUG == true) {
     debug();
@@ -438,7 +439,6 @@ void controllerMap() {
       movespeed = 0;
       break;
   }
-  I--;
 }
 
 //============
@@ -708,6 +708,7 @@ void LEDDebug() {
   //  }
 
 }
+
 ////////////// Communication
 //============
 
