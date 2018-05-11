@@ -276,7 +276,9 @@ void setup() {
 
 void loop() {
 
-  Hub(6, 9);
+  //Hub(6, 9);
+
+  detectIR();
 
   //  DataReceive();
   //  controllerMap();
@@ -292,13 +294,24 @@ void loop() {
 ////////////// Stages
 //============
 
-void detectIR(){
-int  IRspeed = 150;
-  GYRO();
+void detectIR() {
   
-  while(TrueSignal == false && FalseSignal == false){
-    digitalWrite(RF,IRspeed);
-    digitalWrite(LR,IRspeed);
+
+  if (TrueSignal == false && FalseSignal == false) {
+    analogWrite(RF, 130);
+    analogWrite(LR, 130);
+  }
+
+  if (FalseSignal == true) {
+    analogWrite(RF, 0);
+    analogWrite(LR, 0);
+    delay(3000);
+    FalseSignal == false;
+  }
+
+  if (TrueSignal == true) {
+    analogWrite(RF, 0);
+    analogWrite(LR, 0);
   }
 }
 
