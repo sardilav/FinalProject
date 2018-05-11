@@ -160,7 +160,7 @@ bool DES_FRONT=false;
 void setup() {
 
 
-  Serial.begin(115200);
+  Serial.begin(9600);
   Serial2.begin(9600);
 
   Wire.begin();
@@ -425,21 +425,23 @@ void controllerMap() {
 
   switch (B) {
     case 2:               // Forward
-      if (movespeed < MS) {
-        movespeed += AINC;
-      }
-      else {
-        movespeed = MS;
-      }
+//      if (movespeed < MS) {
+//        movespeed += AINC;
+//      }
+//      else {
+//        movespeed = MS;
+//      }
+      movespeed=MS;
       break;
 
     case 6:                 // Reverse
-      if (movespeed < MS) {
-        movespeed += AINC;
-      }
-      else {
-        movespeed = MS;
-      }
+//      if (movespeed < MS) {
+//        movespeed += AINC;
+//      }
+//      else {
+//        movespeed = MS;
+//      }
+      movespeed=MS;
       break;
 
     case 4:                // Right
@@ -454,6 +456,7 @@ void controllerMap() {
       movespeed = 0;
       break;
   }
+  
 }
 
 //============
