@@ -146,7 +146,7 @@ unsigned long LTIME;
 unsigned long RTIME;
 
 //============ Program Stage Checks
-
+bool Startup=true;
 bool LIFT_POS = false;
 bool LIFTED = false;
 bool LIFT_BEGIN = false;
@@ -266,13 +266,14 @@ void setup() {
 
   ledTest();
 
+  GYRO();
 
 }
 
 
 
 void loop() {
-
+  
   DataReceive();
   controllerMap();
   motorMapping();
@@ -392,6 +393,7 @@ void GYRO() {
       mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
       if (firstTime) {
         initialPose = (double)ypr[0] * RAD2DEG;
+        setYaw(modifiedCurrentYaw);
         firstTime = false;
       }
 
@@ -426,22 +428,10 @@ void controllerMap() {
 
     case 4:                // Right
       movespeed = 0;
-      setYaw(yawDesired);
-      if(I==0){
-      yawDesired += TINC;
-      I=UR;
-      }
       break;
 
     case 8:                // Left
       movespeed = 0;
-      yawDesired -= TINC;
-      setYaw(yawDesired);
-      if(I==0){
-      yawDesired -= TINC;
-      I=UR;
-      }
-      
       break;
 
     case 0:                // Stop
@@ -489,12 +479,9 @@ void motorMapping() {
       RS = 0;
       LT = TS;
       RT = -TS;
-      LO = motorOffsetOutput;
-      RO = -motorOffsetOutput;
-      if (yawDiff < margin) {
-        LT = 0;
-        RT = 0;
-      }
+      LO = 0;
+      RO = 0;
+      yawSetpoint=modifiedCurrentYaw;
       break;
 
     case 8:               //LEFT
@@ -502,12 +489,9 @@ void motorMapping() {
       RS = 0;
       LT = -TS;
       RT = TS;
-      LO = -motorOffsetOutput;
-      RO = motorOffsetOutput;
-      if (yawDiff < margin) {
-        LT = 0;
-        RT = 0;
-      }
+      LO = 0;
+      RO = 0;
+      yawSetpoint=modifiedCurrentYaw;
       break;
 
     case 0:               //STOP
