@@ -11,7 +11,7 @@
 // Robot 1: Good Wiring Robot
 // Robot 2: Bad wiring Robot
 
-#define robotnum 1          // Robot Number (1, 2, 3)
+#define robotnum 2          // Robot Number (1, 2, 3)
 #define LF 9                // Left Motor Forward
 #define LR 8                // Left Motor Reverse
 #define RF 10               // Right Motor Reverse
@@ -36,13 +36,16 @@
 
 //============ Change these based off Measured Values
 
-#define QTI1Match 2500      // Value greater than floor but less than black tape for front QTI 
-#define QTI2Match 500       // Value greater than floor but less than black tape for back QTI
+#define QTI1Match 2500      // Value greater than floor but less than black tape for Robot 1 QTI 
+#define QTI2Match 500       // Value greater than floor but less than black tape for Robot 2 QTI
+#define QTI3Match 566       // Value greater than floor but less than black tape for Robot 2 QTI 
 #define MinDist 5           // Minimum Measurable Distance
 #define LiftDist 320        // Distance Lift Box travels from top to bottom
-#define IR_DELAY 30000
+#define IR_DELAY 200000
 #define INC 2
 #define AVG 20
+
+int QTIMatch;
 
 int Sp = 1 * 255;         // Straight Speed limiting value to help encoders keep up
 int TSp = .7 * 255;         // Turn Speed limiting value to help encoders keep up
@@ -50,17 +53,17 @@ int SPC = .95;              // Motor Catch up value if encoder is greater than o
 int SPCI = 1;            // Motor Catch up value if encoder is less than other (>1)
 
 
-bool DEBUG = true;     // Change this to true to enable debug (Printing to serial moniter) Caution slows down program
+bool DEBUG = false;     // Change this to true to enable debug (Printing to serial moniter) Caution slows down program
 
 //============ Gyro and PID
 
 #define MS 220        // Max Speed for driving forward
-#define TS 200        // Max Turn Speed
+#define TS 170        // Max Turn Speed
 #define AINC 1      // Incrementing value for Driving (0-255)
 #define TINC 1      // Degree increment for turning
 
-int UR=30;
-int I=0;
+//int UR=30;
+//int I=0;
 
 int movespeed = 0;
 int LEFT, RIGHT, yawDiff;
@@ -70,7 +73,7 @@ double yawSetpoint, modifiedCurrentYaw, motorOffsetOutput;
 double currentYaw;
 double Kp = 3, Ki = 0, Kd = 0.5;
 PID steeringPID(&modifiedCurrentYaw, &motorOffsetOutput, &yawSetpoint, Kp, Ki, Kd, DIRECT);
-const int StabilizeSeconds = 1;
+const int StabilizeSeconds = 15;
 double initialPose = 0.0;
 
 MPU6050 mpu;
@@ -148,13 +151,13 @@ unsigned long LTIME;
 unsigned long RTIME;
 
 //============ Program Stage Checks
-bool Startup=true;
+bool Startup = true;
 bool LIFT_POS = false;
 bool LIFTED = false;
 bool LIFT_BEGIN = false;
 bool FIRST = true;
 bool LIFT_COMPL = false;
-bool DES_FRONT=false;
+bool DES_FRONT = false;
 
 
 //============
@@ -204,6 +207,15 @@ void setup() {
     mpu.setXGyroOffset(-103);
     mpu.setYGyroOffset(-51);
     mpu.setZGyroOffset(-79);
+  }
+
+  if (robotnum == 3) {
+    mpu.setXAccelOffset(-1918);
+    mpu.setYAccelOffset(-2408);
+    mpu.setZAccelOffset(2009);
+    mpu.setXGyroOffset(-87);
+    mpu.setYGyroOffset(-17);
+    mpu.setZGyroOffset(-8);
   }
 
 
@@ -269,29 +281,32 @@ void setup() {
 
   ledTest();        // Blink the LEDs to show Robot ready
   GYRO();           // Call the Gyro for first time to initialize it and set initial position
-  Hub(1,robotnum);  // Tell Hub that Robot is ready to start
+  Hub(1, robotnum); // Tell Hub that Robot is ready to start
 
 }
 
-
+//============
 
 void loop() {
   GYRO();
   DataReceive();
   controllerMap();
+  if (LIFT_COMPL == false) {
 
-//  if(DES_FRONT==false && DesiredRobot == robotnum){
-//  motorMapping();
-//  }
-//
-//  if(DES_FRONT==false && LIFT_COMPL==true){
-//    motorMapping();
-//  }
-//  
-//  if(DES_FRONT==true && LIFT_COMPL==true){
-//  reverseMotorMapping();
-//  }
-//
+  }
+
+  if (DES_FRONT == false && DesiredRobot == robotnum) {
+    motorMapping();
+  }
+
+  if (DES_FRONT == false && LIFT_COMPL == true) {
+    motorMapping();
+  }
+
+  if (DES_FRONT == true && LIFT_COMPL == true) {
+    reverseMotorMapping();
+  }
+
   if (DEBUG == true) {
     debug();
   }
@@ -303,34 +318,34 @@ void loop() {
 //============
 
 void StageAssign() {
-  if ((DesiredRobot==robotnum && C == 24) || (DesiredRobot==0 && C == 24)) {
+  if (DesiredRobot == robotnum && C == 1 ) {
+    GYRO();
+    yawSetpoint = modifiedCurrentYaw;
+  }
+
+  if (DesiredRobot == robotnum && C == 12 ) {
+    IR();
+  }
+
+  if ((DesiredRobot == robotnum && C == 24) || (DesiredRobot == 0 && C == 24)) {
     Lift();
   }
 
-  if ((DesiredRobot==robotnum && C == 25) || (DesiredRobot==0 && C == 25)) {
+  if ((DesiredRobot == robotnum && C == 25) || (DesiredRobot == 0 && C == 25)) {
     Lower();
   }
 
-  if(C==10){
+  if (C == 10) {
     LIFT_COMPL = true;
-    digitalWrite(GREEN,HIGH);
+    digitalWrite(GREEN, HIGH);
   }
 
-  if(C==11 && DesiredRobot==robotnum){
+  if (C == 11 && DesiredRobot == robotnum) {
     DES_FRONT = true;
-    digitalWrite(YELLOW,HIGH);
+    digitalWrite(YELLOW, HIGH);
   }
 }
 
-//============
-void Hub(int a1, int b1) {
-  Serial2.print('<');
-  Serial2.print(a1);
-  Serial2.print(',');
-  Serial2.print(b1);
-  Serial2.println('>');
-  delay(25);
-}
 
 //============
 
@@ -352,125 +367,19 @@ void Lower() {
 
 }
 
-//============
 
 ////////////// Driving
 //============
 
-void setYaw(double setpoint) {
-  // computes a real yaw from a relative yaw
-  // cleans up angle issues
-  yawSetpoint = setpoint + initialPose;
-  if (yawSetpoint > 180.0)
-    yawSetpoint -= 360.0;
-  else if (yawSetpoint < -180.0)
-    yawSetpoint += 360.0;
-}
-
-void GYRO() {
-
-  static bool firstTime = true;
-
-  currentYaw = (double)ypr[0] * RAD2DEG;
-  if (abs(currentYaw - yawSetpoint) > 180.0) {
-    if (currentYaw >= 0) {
-      modifiedCurrentYaw = currentYaw - 360.0;
-    }
-    else {
-      modifiedCurrentYaw = currentYaw + 360.0;
-    }
-  }
-  else {
-    modifiedCurrentYaw = currentYaw;
-  }
-
-//  currentYaw = gx * RAD2DEG;
-//  if (abs(currentYaw - yawSetpoint) > 180.0) {
-//    if (currentYaw >= 0) {
-//      modifiedCurrentYaw = currentYaw - 360.0;
-//    }
-//    else {
-//      modifiedCurrentYaw = currentYaw + 360.0;
-//    }
-//  }
-//  else {
-//    modifiedCurrentYaw = currentYaw;
-//  }
-//
-//  mpu.getRotation(&gx, &gy, &gz);
-  if (mpuInterrupt || (fifoCount >= packetSize)) {
-
-    // reset interrupt flag and get INT_STATUS byte
-    mpuInterrupt = false;
-    mpuIntStatus = mpu.getIntStatus();
-
-    // get current FIFO count
-    fifoCount = mpu.getFIFOCount();
-   
-
-    // check for overflow (this should never happen unless our code is too inefficient)
-    if ((mpuIntStatus & 0x10) || fifoCount == 1024) {
-      // reset so we can continue cleanly
-      mpu.resetFIFO();
-      Serial.println(F("FIFO overflow!"));
-
-
-      // otherwise, check for DMP data ready interrupt (this should happen frequently)
-    } else if (mpuIntStatus & 0x02) {
-      // wait for correct available data length, should be a VERY short wait
-      while (fifoCount < packetSize) fifoCount = mpu.getFIFOCount();
-
-      // read a packet from FIFO
-      mpu.getFIFOBytes(fifoBuffer, packetSize);
-      mpu.resetFIFO();
-      
-
-      // track FIFO count here in case there is > 1 packet available
-      // (this lets us immediately read more without waiting for an interrupt)
-      fifoCount -= packetSize;
-
-      mpu.dmpGetQuaternion(&q, fifoBuffer);
-      mpu.dmpGetGravity(&gravity, &q);
-      mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
-      if (firstTime) {
-        initialPose = (double)ypr[0] * RAD2DEG;
-        setYaw(modifiedCurrentYaw);
-        firstTime = false;
-      }
-
-    }
-  }
-
-//      if (firstTime) {
-//        initialPose = gx * RAD2DEG;
-//        setYaw(modifiedCurrentYaw);
-//        firstTime = false;
-//      }
-}
-
-//============
-
 void controllerMap() {
-
+  GYRO();
   switch (B) {
     case 2:               // Forward
-//      if (movespeed < MS) {
-//        movespeed += AINC;
-//      }
-//      else {
-//        movespeed = MS;
-//      }
-      movespeed=MS;
+      movespeed = MS;
       break;
 
     case 6:                 // Reverse
-//      if (movespeed < MS) {
-//        movespeed += AINC;
-//      }
-//      else {
-//        movespeed = MS;
-//      }
-      movespeed=MS;
+      movespeed = MS;
       break;
 
     case 4:                // Right
@@ -485,7 +394,7 @@ void controllerMap() {
       movespeed = 0;
       break;
   }
-  
+
 }
 
 //============
@@ -524,7 +433,7 @@ void motorMapping() {
       RT = -TS;
       LO = 0;
       RO = 0;
-      yawSetpoint=modifiedCurrentYaw;
+      yawSetpoint = modifiedCurrentYaw;
       break;
 
     case 8:               //LEFT
@@ -534,7 +443,7 @@ void motorMapping() {
       RT = TS;
       LO = 0;
       RO = 0;
-      yawSetpoint=modifiedCurrentYaw;
+      yawSetpoint = modifiedCurrentYaw;
       break;
 
     case 0:               //STOP
@@ -583,7 +492,7 @@ void motorMapping() {
 
 void reverseMotorMapping() {
 
-int LS, RS, LT, RT, LO, RO;
+  int LS, RS, LT, RT, LO, RO;
 
   GYRO();
   steeringPID.Compute();
@@ -616,7 +525,7 @@ int LS, RS, LT, RT, LO, RO;
       RT = -TS;
       LO = 0;
       RO = 0;
-      yawSetpoint=modifiedCurrentYaw;
+      yawSetpoint = modifiedCurrentYaw;
       break;
 
     case 8:               //LEFT
@@ -626,7 +535,7 @@ int LS, RS, LT, RT, LO, RO;
       RT = TS;
       LO = 0;
       RO = 0;
-      yawSetpoint=modifiedCurrentYaw;
+      yawSetpoint = modifiedCurrentYaw;
       break;
 
     case 0:               //STOP
@@ -685,23 +594,101 @@ void motorOff() {
 ////////////// Sensors
 //============
 
+void setYaw(double setpoint) {
+  // computes a real yaw from a relative yaw
+  // cleans up angle issues
+  yawSetpoint = setpoint + initialPose;
+  if (yawSetpoint > 180.0)
+    yawSetpoint -= 360.0;
+  else if (yawSetpoint < -180.0)
+    yawSetpoint += 360.0;
+}
+
+//============
+
+void GYRO() {
+
+  static bool firstTime = true;
+
+  currentYaw = (double)ypr[0] * RAD2DEG;
+  if (abs(currentYaw - yawSetpoint) > 180.0) {
+    if (currentYaw >= 0) {
+      modifiedCurrentYaw = currentYaw - 360.0;
+    }
+    else {
+      modifiedCurrentYaw = currentYaw + 360.0;
+    }
+  }
+  else {
+    modifiedCurrentYaw = currentYaw;
+  }
+
+  if (mpuInterrupt || (fifoCount >= packetSize)) {
+
+    // reset interrupt flag and get INT_STATUS byte
+    mpuInterrupt = false;
+    mpuIntStatus = mpu.getIntStatus();
+
+    // get current FIFO count
+    fifoCount = mpu.getFIFOCount();
+
+
+    // check for overflow (this should never happen unless our code is too inefficient)
+    if ((mpuIntStatus & 0x10) || fifoCount == 1024) {
+      // reset so we can continue cleanly
+      mpu.resetFIFO();
+      Serial.println(F("FIFO overflow!"));
+
+
+      // otherwise, check for DMP data ready interrupt (this should happen frequently)
+    } else if (mpuIntStatus & 0x02) {
+      // wait for correct available data length, should be a VERY short wait
+      while (fifoCount < packetSize) fifoCount = mpu.getFIFOCount();
+      //digitalWrite(RED,HIGH);
+      // read a packet from FIFO
+      mpu.getFIFOBytes(fifoBuffer, packetSize);
+      mpu.resetFIFO();
+
+
+      // track FIFO count here in case there is > 1 packet available
+      // (this lets us immediately read more without waiting for an interrupt)
+      fifoCount -= packetSize;
+
+      mpu.dmpGetQuaternion(&q, fifoBuffer);
+      mpu.dmpGetGravity(&gravity, &q);
+      mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+      if (firstTime) {
+        initialPose = (double)ypr[0] * RAD2DEG;
+        setYaw(modifiedCurrentYaw);
+        firstTime = false;
+      }
+
+    }
+  }
+  //digitalWrite(RED,LOW);
+}
+
+//============
 void QTICheck() {
   //  QTI1 = QTIVal(QTIsense1);
   QTI2 = QTIVal(QTIsense2);
-  QTI1 = 0;
+  if (1 == robotnum) {
+    QTIMatch = QTI1Match;
+  }
+
+  if (2 == robotnum) {
+    QTIMatch = QTI2Match;
+  }
+
+  if (3 == robotnum) {
+    QTIMatch = QTI3Match;
+  }
+
   if (DEBUG == true) {
     debug();
   }
 
-  if (QTI1 < QTI1Match && QTI2 < QTI2Match)
-  {
-    digitalWrite(RED, LOW);
-  }
-  if (QTI1 >= QTI1Match && QTI2 < QTI2Match)
-  {
-    digitalWrite(RED, LOW);
-  }
-  if (QTI2 > QTI2Match)
+  if (QTI2 > QTIMatch)
   {
     digitalWrite(RED, HIGH);
     motorOff();
@@ -742,22 +729,22 @@ void Distance() {
 //============
 
 void IR() {
-  float d = pulseIn(IR_F, 0, IR_DELAY);
-  float x = 1 / ((d / 100000) * 2);
-  //  float c = pulseIn(IR_B, 0, IR_DELAY);
-  //  float y = 1 / ((c / 1000000) * 2);
+  float d = pulseIn(IR_F, HIGH, IR_DELAY);
+  float x = 1 / ((d / 1000000) * 2);
 
-  if (x >= 210 && x <= 250) {
+  if (x >= 9.5 && x <= 10.5) {
     digitalWrite(GREEN, HIGH);
     digitalWrite(YELLOW, LOW);
   }
 
-  if (x >= 1 && x < 21 || x > 250) {
+  if (x >= 1 && x < 9.5) {
     digitalWrite(GREEN, LOW);
     digitalWrite(YELLOW, HIGH);
   }
 
   if (d == 0) {
+    digitalWrite(GREEN, LOW);
+    digitalWrite(YELLOW, LOW);
   }
 }
 
@@ -766,11 +753,11 @@ void IR() {
 
 void debug() {
   static bool firstTime = true;
-  if(firstTime==true){
-    
-    
+  if (firstTime == true) {
+
+
   }
-  
+
   Serial.print(yawSetpoint);
   Serial.print(',');
   Serial.print(modifiedCurrentYaw);
@@ -801,22 +788,6 @@ void ledTest() {
   digitalWrite(RED, HIGH);
   delay(100);
   digitalWrite(RED, LOW);
-}
-
-
-void LEDDebug() {
-  //  if (LEVal == REVal) {
-  //    digitalWrite(RED, LOW);
-  //    digitalWrite(GREEN, LOW);
-  //    digitalWrite(YELLOW, LOW);
-  //  }
-  //
-  //  if (LEVal > REVal) {
-  //    digitalWrite(RED, HIGH);
-  //    digitalWrite(GREEN, LOW);
-  //    digitalWrite(YELLOW, LOW);
-  //  }
-
 }
 
 ////////////// Communication
@@ -884,5 +855,15 @@ void parseData() {
   if (C > 0) {
     StageAssign();
   }
+}
+
+//============
+void Hub(int a1, int b1) {
+  Serial2.print('<');
+  Serial2.print(a1);
+  Serial2.print(',');
+  Serial2.print(b1);
+  Serial2.println('>');
+  delay(25);
 }
 
