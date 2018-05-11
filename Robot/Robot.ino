@@ -50,7 +50,7 @@ int SPC = .95;              // Motor Catch up value if encoder is greater than o
 int SPCI = 1;            // Motor Catch up value if encoder is less than other (>1)
 
 
-bool DEBUG = true;     // Change this to true to enable debug (Printing to serial moniter) Caution slows down program
+bool DEBUG = false;     // Change this to true to enable debug (Printing to serial moniter) Caution slows down program
 
 //============ Gyro and PID
 
@@ -278,7 +278,7 @@ void loop() {
   DataReceive();
   controllerMap();
 
-  if(DES_FRONT==false && LIFT_COMPL==false){
+  if(DES_FRONT==false){
   motorMapping();
   }
 
@@ -307,10 +307,12 @@ void StageAssign() {
 
   if(C==10){
     LIFT_COMPL = true;
+    digitalWrite(GREEN,HIGH);
   }
 
   if(C==11 && DesiredRobot==robotnum){
     DES_FRONT = true;
+    digitalWrite(YELLOW,HIGH);
   }
 }
 
@@ -733,6 +735,12 @@ void IR() {
 //============
 
 void debug() {
+  static bool firstTime = true;
+  if(firstTime==true){
+    
+    
+  }
+  
   Serial.print(yawSetpoint);
   Serial.print(',');
   Serial.print(modifiedCurrentYaw);
@@ -740,6 +748,8 @@ void debug() {
   Serial.print(yawDiff);
   Serial.print(',');
   Serial.print(motorOffsetOutput);
+  Serial.print(',');
+  Serial.print(B);
   Serial.print(',');
   Serial.print(LEFT);
   Serial.print(',');
