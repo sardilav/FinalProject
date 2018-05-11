@@ -278,10 +278,14 @@ void loop() {
   DataReceive();
   controllerMap();
 
-  if(DES_FRONT==false){
+  if(DES_FRONT==false && DesiredRobot == robotnum){
   motorMapping();
   }
 
+  if(DES_FRONT==false && LIFT_COMPL==true){
+    motorMapping();
+  }
+  
   if(DES_FRONT==true && LIFT_COMPL==true){
   reverseMotorMapping();
   }
