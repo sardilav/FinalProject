@@ -8,7 +8,6 @@ ControlIO control;
 int x,y,z,a,b,c,d,X,Y,NX,NY,But,LSTICK,RSTICK,START,D,STAT;
 ControlDevice device;
 
-
 import processing.serial.*;
 
 Serial myPort;  // Create object from Serial class
@@ -52,6 +51,15 @@ if(LSTICK==8){STAT=25;};
 if(D==0){D=1;};
 if(RSTICK==8){D=0;};
 
+if ( myPort.available() > 0) 
+  {  
+  String inString = myPort.readStringUntil('\n');
+  if(inString != null) {     
+    print( inString );   // echo text string from Arduino
+  }
+  } 
+
+
 
  if (z<0) 
  {
@@ -65,18 +73,6 @@ if(RSTICK==8){D=0;};
   sendMessage(A_TAG, But,D,STAT);
   }
 }
-
-//void serialEvent(Serial p) {
-//  // handle incoming serial data
-//  String inString = myPort.readStringUntil('\n');
-//  if(inString != null) {     
-//    print( inString );   // echo text string from Arduino
-//  }
-//}
-
-//void mousePressed() {
-//  sendMessage(A_TAG, But,b,c,d);
-//}
 
 void sendMessage(char tag, int a, int b, int c){
   // send the given index and value to the serial port

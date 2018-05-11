@@ -152,6 +152,7 @@ bool LIFTED = false;
 bool LIFT_BEGIN = false;
 bool FIRST = true;
 bool LIFT_COMPL = false;
+bool DES_FRONT=false;
 
 
 //============
@@ -290,12 +291,20 @@ void loop() {
 //============
 
 void StageAssign() {
-  if (C == 24) {
+  if ((DesiredRobot==robotnum && C == 24) || (DesiredRobot==0 && C == 24)) {
     Lift();
   }
 
-  if (C == 25) {
+  if ((DesiredRobot==robotnum && C == 25) || (DesiredRobot==0 && C == 25)) {
     Lower();
+  }
+
+  if(C==10){
+    LIFT_COMPL = true;
+  }
+
+  if(C==11 && DesiredRobot==robotnum){
+    DES_FRONT = true;
   }
 }
 
@@ -452,7 +461,14 @@ void motorMapping() {
   steeringPID.Compute();
   yawDiff = abs(yawSetpoint - modifiedCurrentYaw);
 
-
+  if(DES_FRONT==true && LIFT_COMPL==true){
+    if(B==2){
+      B=6;
+    }
+    if(B==6){
+      B=2;
+    }
+  }
 
   switch (B) {
 
