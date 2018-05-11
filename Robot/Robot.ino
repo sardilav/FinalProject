@@ -277,8 +277,14 @@ void loop() {
   
   DataReceive();
   controllerMap();
+
+  if(DES_FRONT==false && LIFT_COMPL==false){
   motorMapping();
-  
+  }
+
+  if(DES_FRONT==true && LIFT_COMPL==true){
+  reverseMotorMapping();
+  }
 
   if (DEBUG == true) {
     debug();
@@ -454,24 +460,11 @@ void controllerMap() {
 
 void motorMapping() {
   int LS, RS, LT, RT, LO, RO;
-  int LB;             //last case state
-  int margin = 2;
 
   GYRO();
   steeringPID.Compute();
   yawDiff = abs(yawSetpoint - modifiedCurrentYaw);
 
-  if(DES_FRONT==true && LIFT_COMPL==true){
-    int FB=0;
-    if(B==2){
-      FB=6;
-    }
-    if(B==6){
-      FB=2;
-    }
-    B=FB;
-  }
-  
   switch (B) {
 
     case 2:               // Forward
@@ -519,7 +512,6 @@ void motorMapping() {
       RT = 0;
       LO = 0;
       RO = 0;
-      LB = 0;
       break;
   }
 
@@ -557,15 +549,93 @@ void motorMapping() {
 
 //============
 
-void motorReverseMapping() {
+void reverseMotorMapping() {
 
-  if (B == 0) {               // Off
-    motorOff();
+int LS, RS, LT, RT, LO, RO;
+
+  GYRO();
+  steeringPID.Compute();
+  yawDiff = abs(yawSetpoint - modifiedCurrentYaw);
+
+  switch (B) {
+
+    case 6:               // Forward
+      LS = movespeed;
+      RS = movespeed;
+      LT = 0;
+      RT = 0;
+      LO = motorOffsetOutput;
+      RO = -motorOffsetOutput;
+      break;
+
+    case 2:               // Reverse
+      LS = -movespeed;
+      RS = -movespeed;
+      LT = 0;
+      RT = 0;
+      LO = -motorOffsetOutput;
+      RO = motorOffsetOutput;
+      break;
+
+    case 4:               //Right
+      LS = 0;
+      RS = 0;
+      LT = TS;
+      RT = -TS;
+      LO = 0;
+      RO = 0;
+      yawSetpoint=modifiedCurrentYaw;
+      break;
+
+    case 8:               //LEFT
+      LS = 0;
+      RS = 0;
+      LT = -TS;
+      RT = TS;
+      LO = 0;
+      RO = 0;
+      yawSetpoint=modifiedCurrentYaw;
+      break;
+
+    case 0:               //STOP
+      LS = 0;
+      RS = 0;
+      LT = 0;
+      RT = 0;
+      LO = 0;
+      RO = 0;
+      break;
   }
 
-  if (DEBUG == true) {
-    debug();
+  LEFT = LS + LT + LO;
+  RIGHT = RS + RT + RO;
+
+  if (LEFT > 0) {
+    analogWrite(LF, LEFT);
+    analogWrite(LR, 0);
   }
+
+  if (RIGHT > 0) {
+    analogWrite(RF, RIGHT);
+    analogWrite(RR, 0);
+  }
+  if (LEFT < 0) {
+    analogWrite(LR, abs(LEFT));
+    analogWrite(LF, 0);
+  }
+  if (RIGHT < 0) {
+    analogWrite(RR, abs(RIGHT));
+    analogWrite(RF, 0);
+  }
+  if (LEFT == 0) {
+    analogWrite(LR, 0);
+    analogWrite(LF, 0);
+  }
+  if (RIGHT == 0) {
+    analogWrite(RR, 0);
+    analogWrite(RF, 0);
+  }
+
 }
 
 
@@ -675,24 +745,6 @@ void debug() {
   Serial.print(',');
   Serial.println(RIGHT);
 
-
-
-  //  Serial.print(" | Robot: ");
-  //  Serial.print(DesiredRobot);
-  //  Serial.print(" | DPad: ");
-  //  Serial.print(B);
-  //  Serial.print(" | C: ");
-  //  Serial.print(C);
-  //  Serial.print(" | DEBUGGER: ");
-  //  Serial.print(DEBBUGER);
-  //  Serial.print(" | Dist: ");
-  //  Serial.print(dist);
-  //  Serial.print(" | Stepper: ");
-  //  Serial.print(stepper1.currentPosition());
-  // Serial.print(" | LE: ");
-  //  Serial.print(LEVal);
-  //  Serial.print(" | RE: ");
-  //  Serial.print(REVal);
 
 }
 
