@@ -55,12 +55,12 @@ bool DEBUG = true;     // Change this to true to enable debug (Printing to seria
 //============ Gyro and PID
 
 #define MS 220        // Max Speed for driving forward
-#define TS 200        // Max Turn Speed
+#define TS 180        // Max Turn Speed
 #define AINC 1      // Incrementing value for Driving (0-255)
 #define TINC 1      // Degree increment for turning
 
-int UR=30;
-int I=0;
+int UR = 30;
+int I = 0;
 
 int movespeed = 0;
 int LEFT, RIGHT, yawDiff;
@@ -68,7 +68,7 @@ int yawDesired = 0;
 
 double yawSetpoint, modifiedCurrentYaw, motorOffsetOutput;
 double currentYaw;
-double Kp = 3, Ki = 0, Kd = 0;
+double Kp = 3, Ki = 0, Kd = 0.5;
 PID steeringPID(&modifiedCurrentYaw, &motorOffsetOutput, &yawSetpoint, Kp, Ki, Kd, DIRECT);
 const int StabilizeSeconds = 15;
 double initialPose = 0.0;
@@ -146,12 +146,14 @@ unsigned long LTIME;
 unsigned long RTIME;
 
 //============ Program Stage Checks
-bool Startup=true;
+bool Startup = true;
 bool LIFT_POS = false;
 bool LIFTED = false;
 bool LIFT_BEGIN = false;
 bool FIRST = true;
 bool LIFT_COMPL = false;
+bool TrueSignal = false;
+bool FalseSignal = false;
 
 
 //============
@@ -273,20 +275,32 @@ void setup() {
 
 
 void loop() {
-  
-  DataReceive();
-  controllerMap();
-  motorMapping();
 
-  if (DEBUG == true) {
-    debug();
-  }
+  Hub(6, 9);
+
+  //  DataReceive();
+  //  controllerMap();
+  //  motorMapping();
+  //
+  //  if (DEBUG == true) {
+  //    debug();
+  //  }
 
 
 }
 
 ////////////// Stages
 //============
+
+void detectIR(){
+int  IRspeed = 150;
+  GYRO();
+  
+  while(TrueSignal == false && FalseSignal == false){
+    digitalWrite(RF,IRspeed);
+    digitalWrite(LR,IRspeed);
+  }
+}
 
 void StageAssign() {
   if (C == 24) {
@@ -481,7 +495,7 @@ void motorMapping() {
       RT = -TS;
       LO = 0;
       RO = 0;
-      yawSetpoint=modifiedCurrentYaw;
+      yawSetpoint = modifiedCurrentYaw;
       break;
 
     case 8:               //LEFT
@@ -491,7 +505,7 @@ void motorMapping() {
       RT = TS;
       LO = 0;
       RO = 0;
-      yawSetpoint=modifiedCurrentYaw;
+      yawSetpoint = modifiedCurrentYaw;
       break;
 
     case 0:               //STOP
@@ -630,11 +644,13 @@ void IR() {
   if (x >= 210 && x <= 250) {
     digitalWrite(GREEN, HIGH);
     digitalWrite(YELLOW, LOW);
+    bool TrueSignal = true;
   }
 
-  if (x >= 1 && x < 21 || x > 250) {
+  if (x >= 1 && x < 210 || x > 250) {
     digitalWrite(GREEN, LOW);
-    digitalWrite(YELLOW, HIGH);
+    digitalWrite(RED, HIGH);
+    bool FalseSignal = true;
   }
 
   if (d == 0) {
