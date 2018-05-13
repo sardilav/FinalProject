@@ -21,11 +21,6 @@
 #define QTIsense2 3         // Back QTI
 #define IR_F 44             // Front IR Sensor
 #define IR_B 12             // Back IR Sensor
-#define TRIGGER_PIN  2      // Front Distance Trigger Pin
-#define ECHO_PIN 13         // Front Distance Echo Pin
-#define MAX_DISTANCE 400    // Distance Sensor Max Distance
-#define LE 18               // Left Encoder
-#define RE 19               // Right Encoder
 #define RED 26              // Red Led R2
 #define GREEN 22            // Green Led R2
 #define YELLOW 24           // YELLOW LED R2
@@ -37,20 +32,18 @@
 
 //============ Change these based off Measured Values
 
-#define QTI1Match 900      // Value greater than floor but less than black tape for Robot 1 QTI 
+#define QTI1Match 900     // Value greater than floor but less than black tape for Robot 1 QTI 
 #define QTI2Match 800     // Value greater than floor but less than black tape for Robot 2 QTI
-#define QTI3Match 1000     // Value greater than floor but less than black tape for Robot 2 QTI 
-#define MinDist 5           // Minimum Measurable Distance
-#define LiftDist 320        // Distance Lift Box travels from top to bottom
-#define IR_DELAY 200000
-#define INC 2
-#define AVG 20
+#define QTI3Match 1000    // Value greater than floor but less than black tape for Robot 2 QTI 
+#define MinDist 5         // Minimum Measurable Distance
+#define LiftDist 320      // Distance Lift Box travels from top to bottom
+#define IR_DELAY 200000   // Amount of time pulseIn will wait before declaring that there is no IR signal
 
 int QTIMatch;
 
-int Sp = 1 * 255;         // Straight Speed limiting value to help encoders keep up
-int TSp = .7 * 255;         // Turn Speed limiting value to help encoders keep up
-int SPC = .95;              // Motor Catch up value if encoder is greater than other (<1)
+int Sp = 1 * 255;        // Straight Speed limiting value to help encoders keep up
+int TSp = .7 * 255;      // Turn Speed limiting value to help encoders keep up
+int SPC = .95;           // Motor Catch up value if encoder is greater than other (<1)
 int SPCI = 1;            // Motor Catch up value if encoder is less than other (>1)
 
 
@@ -58,29 +51,26 @@ bool DEBUG = false;     // Change this to true to enable debug (Printing to seri
 
 //============ Gyro and PID
 
-#define MS 210        // Max Speed for driving forward
-#define TS 170        // Max Turn Speed
+#define MS 210      // Max Speed for driving forward
+#define TS 170      // Max Turn Speed
 #define AINC 1      // Incrementing value for Driving (0-255)
 #define TINC 1      // Degree increment for turning
 
-//int UR=30;
-//int I=0;
+int movespeed = 0;          // Base value written to motors
+int LEFT, RIGHT, yawDiff;   // Variables for controlling motors
+int yawDesired = 0;         // Desired heading for the robot
 
-int movespeed = 0;
-int LEFT, RIGHT, yawDiff;
-int yawDesired = 0;
-
-double yawSetpoint, modifiedCurrentYaw, motorOffsetOutput;
+double yawSetpoint, modifiedCurrentYaw, motorOffsetOutput;  // PID controller desired value, current value, output
 double currentYaw;
-double Kp = 3, Ki = 0, Kd = 0.5;
+double Kp = 3, Ki = 0, Kd = 0.5;                            // PID controller valuees
 PID steeringPID(&modifiedCurrentYaw, &motorOffsetOutput, &yawSetpoint, Kp, Ki, Kd, DIRECT);
-const int StabilizeSeconds = 15;
-double initialPose = 0.0;
+const int StabilizeSeconds = 15;                            // Settle time for the gyro
+double initialPose = 0.0;                                   // initial position for the gyro
 
 MPU6050 mpu;
 
-const uint8_t InterruptPin = 2;
-const uint8_t LedPin = GREEN;
+const uint8_t InterruptPin = 2;                             // Gyro interupt pin
+const uint8_t LedPin = GREEN;                               // Gyro code debug set to led green
 
 boolean CDIR = false;
 
@@ -99,19 +89,16 @@ VectorInt16 aaWorld;    // [x, y, z]            world-frame accel sensor measure
 VectorFloat gravity;    // [x, y, z]            gravity vector
 float euler[3];         // [psi, theta, phi]    Euler angle container
 float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
-//int16_t gx, gy, gz;
-//int16_t ax, ay, az;
 
-const double RAD2DEG = 180.0 / M_PI;
-const double DEG2RAD = M_PI / 180.0;
+const double RAD2DEG = 180.0 / M_PI;    // Radian to degree
+const double DEG2RAD = M_PI / 180.0;    // Degree to radian
 
-
-volatile bool mpuInterrupt = false;     // indicates whether MPU interrupt pin has gone high
-void dmpDataReady() {
+volatile bool mpuInterrupt = false;     // Indicates whether MPU interrupt pin has gone high
+void dmpDataReady() {                   // Declares interupt true if values are ready to be read
   mpuInterrupt = true;
 }
 
-void blink(uint8_t flashes, int pause) {
+void blink(uint8_t flashes, int pause) {    // Function for led debugging of gyro code
   for (uint8_t i = 0; i < flashes; i++) {
     digitalWrite(LedPin, HIGH);
     delay(pause);
@@ -130,58 +117,50 @@ void blink(uint8_t flashes, int pause) {
 #define FULLSTEP 4
 
 
-AccelStepper stepper1(FULLSTEP, motorPin1, motorPin3, motorPin2, motorPin4);
-NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE);
+AccelStepper stepper1(FULLSTEP, motorPin1, motorPin3, motorPin2, motorPin4);  // Initializes the stepper control
 
+int QTI1;           // Front QTI
+int QTI2;           // Back QTI
+int DesiredRobot;   // Robot # that the hub is wanting to control
+int B;              // Driving commands from hub value
+int C;              // Other commands from hub
 
-int QTI1;
-int QTI2;
-int DesiredRobot;
-int B;
-int C;
-int dist;
-int DEBBUGER;
-
+// Variables for hub Communication
 const byte numChars = 32;
 char receivedChars[numChars];
 char tempChars[numChars];
 bool newData = false;
 
-unsigned long TIME;
-unsigned long LTIME;
-unsigned long RTIME;
 
 //============ Program Stage Checks
-bool Startup = true;
-bool LIFT_POS = false;
-bool LIFTED = false;
-bool LIFT_BEGIN = false;
-bool FIRST = true;
-bool LIFT_COMPL = false;
-bool DES_FRONT = false;
 
+//bool LIFT_POS = false;
+//bool LIFTED = false;
+//bool LIFT_BEGIN = false;
+//bool FIRST = true;
+bool LIFT_COMPL = false;  // Has the robot lifted its forklift
+bool DES_FRONT = false;   // Is this the designated front robot
 
 //============
 
 void setup() {
 
+  Serial.begin(38400);    // Initialize serial for debugging
+  Serial2.begin(9600);    // Initialize serial for xbee
 
-  Serial.begin(38400);
-  Serial2.begin(9600);
-
-  Wire.begin();
+  Wire.begin();          // I2C for gyro
   Wire.setClock(400000); // 400kHz I2C clock
 
   // setup/initialization for the PID controller
   setYaw(0.0);
-  steeringPID.SetOutputLimits(-MS, MS);  // **************** Check this ***************
-  steeringPID.SetSampleTime(10);
-  steeringPID.SetMode(AUTOMATIC);
+  steeringPID.SetOutputLimits(-MS, MS);  // Output Limits for PID Controller
+  steeringPID.SetSampleTime(10);         // Sample time for PID controller
+  steeringPID.SetMode(AUTOMATIC);        // PID controllers calculation mode
 
-  mpu.initialize();
-  pinMode(InterruptPin, INPUT);
+  mpu.initialize();                      // Initialize the Gyro
+  pinMode(InterruptPin, INPUT);          // Set gyro interrupt pin to input
 
-  Serial.println(F("Testing device connections..."));
+  Serial.println(F("Testing device connections..."));   // Testing connection to Gyro
   if (!mpu.testConnection()) {
     Serial.println(F("MPU6050 connection failed"));
     // stay here, we can't do anything
@@ -192,7 +171,7 @@ void setup() {
   }
   Serial.println(F("MPU6050 connection successful"));
 
-  if (robotnum == 1) {
+  if (robotnum == 1) {              // Setting Gyro offset limits depending on which robot is being uploaded
     mpu.setXAccelOffset(-426);
     mpu.setYAccelOffset(71);
     mpu.setZAccelOffset(1193);
@@ -221,7 +200,7 @@ void setup() {
 
 
 
-  Serial.println(F("Initializing DMP..."));
+  Serial.println(F("Initializing DMP..."));   // Begin Communication with GYRO
   devStatus = mpu.dmpInitialize();
 
   // make sure it worked (returns 0 if so)
@@ -234,14 +213,14 @@ void setup() {
     Serial.print(F("Enabling interrupt detection on pin "));
     Serial.print(InterruptPin);
     Serial.println(F("..."));
-    attachInterrupt(digitalPinToInterrupt(InterruptPin), dmpDataReady, RISING);
+    attachInterrupt(digitalPinToInterrupt(InterruptPin), dmpDataReady, RISING);   // Attach interupt to Gyro pin
     mpuIntStatus = mpu.getIntStatus();
 
     Serial.println(F("DMP ready! Waiting for first interrupt..."));
 
     // get expected DMP packet size for later comparison
     packetSize = mpu.dmpGetFIFOPacketSize();
-  } else {
+  } else {                                                      // Account for error in GYRO communication
     // ERROR!
     // 1 = initial memory load failed
     // 2 = DMP configuration updates failed
@@ -255,7 +234,7 @@ void setup() {
     }
   }
 
-  Serial.println(F("Stabilizing..."));
+  Serial.println(F("Stabilizing..."));                // Delay rest of program for GYRO settling time
   for (uint8_t i = 0; i < StabilizeSeconds; i++) {
     digitalWrite(LedPin, HIGH);
     delay(500);
@@ -263,6 +242,7 @@ void setup() {
     delay(500);
   }
 
+  // Set motor pins and LED pins to outputs
   pinMode(LF, OUTPUT);
   pinMode(LR, OUTPUT);
   pinMode(RF, OUTPUT);
@@ -272,13 +252,13 @@ void setup() {
   pinMode(RED, OUTPUT);
 
 
-
+  // Setup stepper control values
   stepper1.setMaxSpeed(1000.0);
   stepper1.setAcceleration(900.0);
   stepper1.setSpeed(900);
   stepper1.setCurrentPosition(0);
 
-  motorOff();
+  motorOff();  // Ensure values to motors are at zero to begin with
 
   ledTest();        // Blink the LEDs to show Robot ready
   GYRO();           // Call the Gyro for first time to initialize it and set initial position
@@ -289,26 +269,27 @@ void setup() {
 //============
 
 void loop() {
-  GYRO();
-  DataReceive();
-  controllerMap();
-  if (LIFT_COMPL == false) {
+  GYRO();                     // Call Gyro function to get currentheading value
+  DataReceive();              // Check for information from HUB
+  controllerMap();            // Set the movespeed values based off of value B from hub
 
+  if(LIFT_COMPL==false){  // Checks QTI sensors and responds accordingly to returned values
+    QTICheck();
   }
 
-  if (DES_FRONT == false && DesiredRobot == robotnum) {
+  if (DES_FRONT == false && DesiredRobot == robotnum) { // Normal motor control if robot is not front robot and desiredrobot is current robot
     motorMapping();
   }
 
-  if (DES_FRONT == false && LIFT_COMPL == true) {
+  if (DES_FRONT == false && LIFT_COMPL == true) { // Normal motor control if robot is not front robot and lifting of forklift is complete
     motorMapping();
   }
 
-  if (DES_FRONT == true && LIFT_COMPL == true) {
+  if (DES_FRONT == true && LIFT_COMPL == true) {  // Reverse motor control if lifitng is complete and robot is designated front robot
     reverseMotorMapping();
   }
 
-  if (DEBUG == true) {
+  if (DEBUG == true) {    // Calls debug function
     debug();
   }
 
@@ -318,30 +299,30 @@ void loop() {
 ////////////// Stages
 //============
 
-void StageAssign() {
-  if (DesiredRobot == robotnum && C == 1 ) {
+void StageAssign() {  // Calls functions or changes boolean values based of received value C
+  if (DesiredRobot == robotnum && C == 1 ) {  // Hub command to reset desired heading to current heading
     GYRO();
     yawSetpoint = modifiedCurrentYaw;
   }
 
-  if (DesiredRobot == robotnum && C == 12 ) {
+  if (DesiredRobot == robotnum && C == 12 ) { // HUB command to call IR checking function
     IR();
   }
 
-  if ((DesiredRobot == robotnum && C == 24) || (DesiredRobot == 0 && C == 24)) {
+  if ((DesiredRobot == robotnum && C == 24) || (DesiredRobot == 0 && C == 24)) {  // Hub command to lift forklift only called if desiredrobot=robotnum or desiredrobot =0
     Lift();
   }
 
-  if ((DesiredRobot == robotnum && C == 25) || (DesiredRobot == 0 && C == 25)) {
+  if ((DesiredRobot == robotnum && C == 25) || (DesiredRobot == 0 && C == 25)) {  // Hub command to lower forklift only called if desiredrobot=robotnum or desiredrobot =0
     Lower();
   }
 
-  if (C == 10) {
+  if (C == 10) {                              // Set lift complete value to true
     LIFT_COMPL = true;
     digitalWrite(GREEN, HIGH);
   }
 
-  if (C == 11 && DesiredRobot == robotnum) {
+  if (C == 11 && DesiredRobot == robotnum) {  // Assign robot to be front robot
     DES_FRONT = true;
     digitalWrite(YELLOW, HIGH);
   }
@@ -350,9 +331,9 @@ void StageAssign() {
 
 //============
 
-void Lift() {
-  digitalWrite(GREEN, HIGH);
-  stepper1.move(LiftDist);
+void Lift() {                   // Initializes lifting mechanism to begin lift forklift
+  digitalWrite(GREEN, HIGH);     
+  stepper1.move(LiftDist);      
   stepper1.runToPosition();
   digitalWrite(GREEN, LOW);
   LIFT_COMPL = true;
@@ -361,7 +342,7 @@ void Lift() {
 //============
 
 
-void Lower() {
+void Lower() {                // Initializes lifting mechanism to begin lower forklift     
   stepper1.move(-LiftDist);
   stepper1.runToPosition();
   stepper1.run();
@@ -372,14 +353,14 @@ void Lower() {
 ////////////// Driving
 //============
 
-void controllerMap() {
+void controllerMap() {    // Sets movespeed values based off of controller input values
   GYRO();
   switch (B) {
-    case 2:               // Forward
+    case 2:                // Forward
       movespeed = MS;
       break;
 
-    case 6:                 // Reverse
+    case 6:                // Reverse
       movespeed = MS;
       break;
 
@@ -403,11 +384,15 @@ void controllerMap() {
 void motorMapping() {
   int LS, RS, LT, RT, LO, RO;
 
-  GYRO();
-  steeringPID.Compute();
-  yawDiff = abs(yawSetpoint - modifiedCurrentYaw);
+  GYRO();                                           // Calls GYRO function to get current heading
+  steeringPID.Compute();                            // Calls PID controller to calculate motor offset value
 
   switch (B) {
+  /*  Sets motor values based off of B value so forward, backward, left, right.
+   *  LS,RS are for straight lines (forward backward)
+   *  LT,RT are the turn motor speeds
+   *  LO,RO are the motoroffset values from the PID Controller
+   */
 
     case 2:               // Forward
       LS = movespeed;
@@ -457,9 +442,14 @@ void motorMapping() {
       break;
   }
 
-  LEFT = LS + LT + LO;
-  RIGHT = RS + RT + RO;
+  LEFT = LS + LT + LO;      // Value to be written to left motor
+  RIGHT = RS + RT + RO;     // Value to be written to right motor
 
+  /* Sets the output pin based off of LEFT,RIGHT value
+   * if postitive value is sent to corresponding forward pin
+   * if negative value is sent to corresponding reverse pin
+   */
+  
   if (LEFT > 0) {
     analogWrite(LF, LEFT);
     analogWrite(LR, 0);
@@ -492,6 +482,10 @@ void motorMapping() {
 //============
 
 void reverseMotorMapping() {
+  /*  Same exact function as MotorMapping();
+   *  except it reverses forward and backward
+   */
+  
 
   int LS, RS, LT, RT, LO, RO;
 
@@ -608,21 +602,7 @@ void setYaw(double setpoint) {
 //============
 
 void GYRO() {
-
   static bool firstTime = true;
-
-  currentYaw = (double)ypr[0] * RAD2DEG;
-  if (abs(currentYaw - yawSetpoint) > 180.0) {
-    if (currentYaw >= 0) {
-      modifiedCurrentYaw = currentYaw - 360.0;
-    }
-    else {
-      modifiedCurrentYaw = currentYaw + 360.0;
-    }
-  }
-  else {
-    modifiedCurrentYaw = currentYaw;
-  }
 
   if (mpuInterrupt || (fifoCount >= packetSize)) {
 
@@ -666,14 +646,27 @@ void GYRO() {
 
     }
   }
-  //digitalWrite(RED,LOW);
+  currentYaw = (double)ypr[0] * RAD2DEG;        // Pulls the yaw value from received gyro data
+  if (abs(currentYaw - yawSetpoint) > 180.0) {  // Sets it in terms of relative yaw
+    if (currentYaw >= 0) {
+      modifiedCurrentYaw = currentYaw - 360.0;
+    }
+    else {
+      modifiedCurrentYaw = currentYaw + 360.0;
+    }
+  }
+  else {
+    modifiedCurrentYaw = currentYaw;
+  }
 }
 
 //============
-void QTICheck() {
-  //  QTI1 = QTIVal(QTIsense1);
-  QTI2 = QTIVal(QTIsense2);
-  if (1 == robotnum) {
+void QTICheck() {   // Checks QTI Sensors
+  //  QTI1 = QTIVal(QTIsense1); // Calls the QTI Read function for front QTI Sensor
+  QTI2 = QTIVal(QTIsense2); // Calls the QTI Read function for back QTI Sensor
+  
+  // Sets the compared QTI value to read value based off of robot num
+  if (1 == robotnum) {  
     QTIMatch = QTI1Match;
   }
 
@@ -689,7 +682,7 @@ void QTICheck() {
     debug();
   }
 
-  if (QTI2 > QTIMatch)
+  if (QTI2 > QTIMatch)      // Turns off motors and freezes robot if black line is detected
   {
     digitalWrite(RED, HIGH);
     motorOff();
@@ -702,7 +695,7 @@ void QTICheck() {
 
 //============
 
-long QTIVal(int sensorIn) {
+long QTIVal(int sensorIn) { // Reads QTI sensor values
   long duration = 0;
   pinMode(sensorIn, OUTPUT);
   digitalWrite(sensorIn, HIGH);
@@ -717,22 +710,11 @@ long QTIVal(int sensorIn) {
 
 //============
 
-void Distance() {
-  dist = sonar.ping_cm();
-  if (dist == 0) {
-    dist = MAX_DISTANCE;
-  }
-  if (DEBUG == true) {
-    debug();
-  }
-}
-
-//============
-
-void IR() {
-  float d = pulseIn(IR_F, HIGH, IR_DELAY);
+void IR() { // Checks the IR Sensor
+  float d = pulseIn(IR_F, HIGH, IR_DELAY);  //Reads IR Sensor
   float x = 1 / ((d / 1000000) * 2);
 
+  // Turns on LEDs based off of returned values
   if (x >= 9.5 && x <= 10.5) {
     digitalWrite(GREEN, HIGH);
     digitalWrite(YELLOW, LOW);
@@ -752,13 +734,7 @@ void IR() {
 ////////////// Sensors
 //============
 
-void debug() {
-  static bool firstTime = true;
-  if (firstTime == true) {
-
-
-  }
-
+void debug() { // Prints values to serial monitor for debugging
   Serial.print(yawSetpoint);
   Serial.print(',');
   Serial.print(modifiedCurrentYaw);
@@ -777,7 +753,7 @@ void debug() {
 }
 
 //============
-void ledTest() {
+void ledTest() {  // Blinks all three leds as a test and to show that the Robot is ready
   digitalWrite(GREEN, HIGH);
   delay(100);
   digitalWrite(GREEN, LOW);
@@ -794,12 +770,12 @@ void ledTest() {
 ////////////// Communication
 //============
 
-void DataReceive() {
-  recvWithStartEndMarkers();
-  if (newData == true) {
-    strcpy(tempChars, receivedChars);
-    parseData();
-    newData = false;
+void DataReceive() {  
+  recvWithStartEndMarkers();          // Checks the xbee for data
+  if (newData == true) {              // if the data is new
+    strcpy(tempChars, receivedChars); // Copies data
+    parseData();                      // Parses the data into variables
+    newData = false;                  // Resets new data varaible
   }
 }
 
@@ -812,14 +788,14 @@ void recvWithStartEndMarkers() {
   char endMarker = '>';
   char rc;
 
-  while (Serial2.available() > 0 && newData == false) {
+  while (Serial2.available() > 0 && newData == false) {   // Pulls all data from the xbee
     rc = Serial2.read();
 
-    if (recvInProgress == true) {
+    if (recvInProgress == true) {   // Reads data until endmarker is detected '>'
       if (rc != endMarker) {
         receivedChars[ndx] = rc;
         ndx++;
-        if (ndx >= numChars) {
+        if (ndx >= numChars) {  // Resets index varible if too high
           ndx = numChars - 1;
         }
       }
@@ -831,7 +807,7 @@ void recvWithStartEndMarkers() {
       }
     }
 
-    else if (rc == StartMarker) {
+    else if (rc == StartMarker) {   // declares that receiving data
       recvInProgress = true;
     }
   }
@@ -844,14 +820,14 @@ void parseData() {
 
   char * strtokIndx; // this is used by strtok() as an index
 
-  strtokIndx = strtok(tempChars, ",");     // get the first part - the string
+  strtokIndx = strtok(tempChars, ",");     // get the first part Desired Robot
   DesiredRobot = atoi(strtokIndx);
 
   strtokIndx = strtok(NULL, ","); // this continues where the previous call left off
   B = atoi(strtokIndx);     // convert this part to an integer
 
   strtokIndx = strtok(NULL, ",");
-  C = atoi(strtokIndx);     // convert this part to a float
+  C = atoi(strtokIndx);     
 
   if (C > 0) {
     StageAssign();
@@ -859,7 +835,7 @@ void parseData() {
 }
 
 //============
-void Hub(int a1, int b1) {
+void Hub(int a1, int b1) {  // Function to send values to hub
   Serial2.print('<');
   Serial2.print(a1);
   Serial2.print(',');
